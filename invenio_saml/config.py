@@ -102,7 +102,7 @@ The structure of the dictionary is as follows:
                     # TODO
                 },
             },
-            
+
             'settings_file_path': '/full/path/to/directory',
             'settings_url': 'https://...',
 
@@ -168,12 +168,16 @@ The structure of the dictionary is as follows:
     the user will be redirected to. It gets called after
     ``OneLogin_Saml2_Auth.process_slo``.
     Typically returns the next URL too, although it is not mandatory.
-:param mappings: Key value pairs linking content coming from the IdP (attribute 
+:param mappings: Key value pairs linking content coming from the IdP (attribute
     response) and Invenio User properties. This key is mandatory when using the default
     acs handler in conjuction with the default account info extraction.
-:param auto_confirm: Automatically set `confirmed_at` for users upon registration, 
+:param auto_confirm: Automatically set `confirmed_at` for users upon registration,
     when using the default ``acs_handler``.
 """
+
+
+SSO_SAML_METADATA = {}
+"""Where the remote metadata is stored, local or remote."""
 
 
 # Default handlers
@@ -212,3 +216,9 @@ SSO_SAML_DEFAULT_SLO_ROUTE = "/slo/<idp>"
 
 SSO_SAML_DEFAULT_SLS_ROUTE = "/sls/<idp>"
 """URL route to handle the IdP logout request."""
+
+# Discovery server and WAYF
+
+SAML_DISCOVERY_URL = None
+
+SAML_DISCOVERY_ENTITY_ID = None

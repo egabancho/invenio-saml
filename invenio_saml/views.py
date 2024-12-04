@@ -19,8 +19,9 @@ from flask import (
     redirect,
     request,
     session,
+    url_for,
 )
-
+from urllib.parse import urlencode, urlparse, parse_qs, urlunparse
 from invenio_saml.errors import IdentityProviderNotFound
 from invenio_saml.proxies import current_sso_saml
 
@@ -61,9 +62,37 @@ def metadata(idp, auth):
         return resp
 
 
-@verify_idp
-def sso(idp, auth):
+def sso(idp=None, auth=None):
     """Send user to IdP login page (SAML single sign-on)."""
+    idp = idp if idp else request.args.get("idp", None) # check if response from disco
+
+    if not idp and (discovery_service := current_app.config["SAML_DISCOVERY_URL"]):
+        # Discovery server redirection
+        next_url = request.args.get("next", request.referrer) or ""
+        params = {
+            "return": url_for("sso_saml.sso", next=next_url, _external=True),
+            "entityID": current_app.config["SAML_DISCOVERY_ENTITY_ID"],
+            "returnIDParam": "idp",
+        }
+        parsed_url = urlparse(discovery_service)
+        query = parse_qs(parsed_url.query)
+        query.update(params)
+        ds_url = urlunparse(
+            (
+                parsed_url.scheme,
+                parsed_url.netloc,
+                parsed_url.path,
+                parsed_url.params,
+                urlencode(query),
+                parsed_url.fragment,
+            )
+        )
+        current_app.logger.debug(
+            "A discovery process is needed trough a"
+            f"Discovery Service: {ds_url}"
+        )
+        return redirect(ds_url)
+
     current_app.logger.debug("SSO SAML for {}".format(idp))
 
     next_url = request.args.get("next", request.referrer) or request.host_url
@@ -179,6 +208,7 @@ def create_blueprint(state, import_name):
     bp.add_url_rule(
         state.sso_url, methods=["GET", "POST"], endpoint="sso", view_func=sso
     )
+    bp.add_url_rule("/login", methods=["GET", "POST"], endpoint="sso", view_func=sso)
 
     bp.add_url_rule(
         state.acs_url, methods=["GET", "POST"], endpoint="acs", view_func=acs

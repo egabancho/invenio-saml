@@ -15,9 +15,13 @@ from flask import url_for
 from onelogin.saml2.idp_metadata_parser import OneLogin_Saml2_IdPMetadataParser
 from werkzeug.utils import cached_property, import_string
 
+from saml2.config import Config
+from saml2.mdstore import MetadataStore
+
+
 from . import config
 from .errors import IdentityProviderNotFound
-from .utils import SAMLAuth, prepare_flask_request
+from .utils import SAMLAuth, parse_into_saml_config, prepare_flask_request
 from .views import create_blueprint
 
 
@@ -160,6 +164,20 @@ class _InvenioSSOSAMLState(object):
         """Instantiate the IdP."""
         return SAMLAuth(idp, self.get_settings(idp))
 
+    def _get_config_from_metadata(self):
+        """Read metadata from location."""
+        # TODO: possibly cache this on redis and update it regularly
+        if metadata := self.app.config["SSO_SAML_METADATA"]:
+            mds = MetadataStore(None, Config())
+            for k, v in metadata.items():
+                for src in v:
+                    mds.load(k, **src)
+            idp_configs = {
+                idp_id: parse_into_saml_config(mds, idp_id)
+                for idp_id in mds.identity_providers()
+            }
+            self.app.config["SSO_SAML_IDPS"].update(idp_configs)
+
     def _build_configuration(self, idp):
         """Update default config with the ones read from configuration."""
 
@@ -178,6 +196,9 @@ class _InvenioSSOSAMLState(object):
                 if handler and isinstance(handler, str)
                 else handler
             )
+        if "idp" not in self.app.config["SSO_SAML_IDPS"]:
+            # Check if we should fetch the metadata
+            self._get_config_from_metadata()
 
         config = _default_config(idp)
         update(config, self.app.config["SSO_SAML_IDPS"][idp])

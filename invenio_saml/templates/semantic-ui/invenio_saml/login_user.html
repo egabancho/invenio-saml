@@ -15,13 +15,13 @@
 
 
 {%- block form_outer %}
-  {% if config.OAUTHCLIENT_REMOTE_APPS or config.SSO_SAML_IDPS %}
+  {%- if config.OAUTHCLIENT_REMOTE_APPS or config.SSO_SAML_IDPS or config.SAML_DISCOVERY_URL %}
   <div class="ui form">
-    {% for name in config.OAUTHCLIENT_REMOTE_APPS.keys() %}
+    {%- for name in config.OAUTHCLIENT_REMOTE_APPS.keys() %}
       {{ oauth_button(name, next=request.args.get('next')) }}
-    {% endfor %}
+    {%- endfor %}
   </div>
-  {% for name in config.SSO_SAML_IDPS.keys() %}
+  {%- for name in config.SSO_SAML_IDPS.keys() %}
   <div class="field">
     <a class="fluid ui basic button large" href="{{ url_for('sso_saml.sso', idp=name) }}">
       <i class="{{ name|lower() }} icon"></i>
@@ -30,13 +30,20 @@
       }}
     </a>
   </div>
-  {% endfor %}
+  {%- endfor %}
+  <%- if config.SAML_DISCOVERY_URL %>
+  <div class="field">
+    <a class="fluid ui basic button large" href="{{ url_for('sso_saml.sso') }}">
+      _{{ ("Institution login") }}
+    </a>
+  </div>
+  <%- endif %>
 
-    {%- if config.ACCOUNTS_LOCAL_LOGIN_ENABLED %}
-      <div class="ui horizontal divider">
-        {{ _("Or") }}
-      </div>
-    {%- endif %}
-  {% endif %}
+  {%- if config.ACCOUNTS_LOCAL_LOGIN_ENABLED %}
+    <div class="ui horizontal divider">
+      {{ _("Or") }}
+    </div>
+  {%- endif %}
+  {%- endif %}
   {{ super () }}
 {% endblock %}
